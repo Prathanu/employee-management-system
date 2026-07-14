@@ -1,0 +1,27 @@
+spring:
+  application:
+    name: employee-management-backend
+
+  profiles:
+    # Default: h2 (no Docker needed). Use "dev" for MySQL via Docker.
+    active: ${SPRING_PROFILES_ACTIVE:h2}
+
+server:
+  port: 8080
+
+app:
+  cors:
+    allowed-origins: http://localhost:3000,http://127.0.0.1:3000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      show-details: always
+
+logging:
+  level:
+    com.company.ems: INFO

@@ -1,0 +1,95 @@
+/* Global styles for Employee Management System */
+
+:root {
+  --ems-primary: #0d6efd;
+  --ems-sidebar-bg: #1e293b;
+  --ems-sidebar-text: #f8fafc;
+}
+
+body {
+  margin: 0;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background-color: #f1f5f9;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+/* Login page gradient background */
+.login-page {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #0d6efd 0%, #1e3a8a 50%, #0f172a 100%);
+}
+
+.login-card {
+  border: none;
+  border-radius: 1rem;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25);
+}
+
+/* Dashboard stat cards */
+.stat-card {
+  border: none;
+  border-radius: 0.75rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+}
+
+/* Sidebar layout */
+.app-layout {
+  display: flex;
+  min-height: 100vh;
+}
+
+.sidebar {
+  width: 260px;
+  background: var(--ems-sidebar-bg);
+  color: var(--ems-sidebar-text);
+  flex-shrink: 0;
+}
+
+.sidebar .nav-link {
+  color: #cbd5e1;
+  border-radius: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
+.sidebar .nav-link:hover,
+.sidebar .nav-link.active {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.main-content {
+  flex: 1;
+  padding: 1.5rem;
+  overflow-x: auto;
+}
+
+/* Table improvements */
+.table-card {
+  border: none;
+  border-radius: 0.75rem;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+/* Responsive: collapse sidebar on mobile */
+@media (max-width: 768px) {
+  .app-layout {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    width: 100%;
+  }
+
+  .main-content {
+    padding: 1rem;
+  }
+}

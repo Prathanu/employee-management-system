@@ -1,0 +1,27 @@
+# Profile: dev — MySQL via Docker (requires Docker Desktop)
+# Step 1: cd c:\Devops\docker && docker compose up -d
+# Step 2: mvn spring-boot:run -Dspring-boot.run.profiles=dev
+
+spring:
+  config:
+    activate:
+      on-profile: dev
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/employee_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    username: ems_user
+    password: ems_pass
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: true
+
+logging:
+  level:
+    org.hibernate.SQL: DEBUG

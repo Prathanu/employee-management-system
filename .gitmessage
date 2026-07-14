@@ -1,0 +1,9 @@
+# See docs/GIT-WORKFLOW.md for full branching and commit guidelines.
+
+# Quick reference:
+# feat(scope): new feature
+# fix(scope): bug fix
+# test(scope): tests
+# docs: documentation
+# chore: config/tooling
+# ci: pipeline changes
