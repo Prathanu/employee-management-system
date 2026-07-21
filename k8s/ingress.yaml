@@ -1,0 +1,46 @@
+# Optional Ingress — host-based routing (enable after installing an Ingress controller)
+# Not applied by Jenkins pipeline; use manually when you have nginx-ingress or similar
+#
+# Docker Desktop: enable Kubernetes + install ingress:
+#   kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.11.3/deploy/static/provider/cloud/deploy.yaml
+#
+# Add to hosts file: 127.0.0.1 employee-mgmt.local
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ems-ingress
+  namespace: employee-mgmt
+  labels:
+    app.kubernetes.io/name: employee-management-system
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: employee-mgmt.local
+      http:
+        paths:
+          # Frontend UI
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: ems-frontend
+                port:
+                  number: 80
+          # API (optional direct route — frontend nginx also proxies /api)
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: backend
+                port:
+                  number: 8080
+          - path: /actuator
+            pathType: Prefix
+            backend:
+              service:
+                name: backend
+                port:
+                  number: 8080

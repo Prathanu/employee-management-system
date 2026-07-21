@@ -1,0 +1,57 @@
+# =============================================================================
+# BACKEND DOCKERFILE — Spring Boot Employee Management API
+# =============================================================================
+# Build context: repository root (c:\Devops)
+# Build command:
+#   docker build -f docker/Dockerfile.backend -t ems-backend:latest .
+# =============================================================================
+
+# ── STAGE 1: BUILD ────────────────────────────────────────────────────────────
+# Use Maven + JDK 17 image to compile and package the Spring Boot JAR
+FROM maven:3.9-eclipse-temurin-17-alpine AS build
+
+WORKDIR /app
+
+# Copy POM files first — Docker caches dependency download layer
+# (only re-runs when pom.xml changes, not on every code change)
+COPY pom.xml .
+COPY backend/pom.xml backend/
+
+# Download dependencies (offline mode — faster subsequent builds)
+RUN mvn dependency:go-offline -pl backend -B -q
+
+# Copy source code
+COPY backend/src backend/src
+
+# Package JAR — skip tests (tests run in Jenkins Stage 4)
+RUN mvn package -pl backend -DskipTests -B -q
+
+# ── STAGE 2: RUNTIME ──────────────────────────────────────────────────────────
+# Use slim JRE-only image — no Maven/compiler tools in production image
+FROM eclipse-temurin:17-jre-alpine AS runtime
+
+# Add non-root user for security (production best practice)
+RUN addgroup -S ems && adduser -S ems -G ems
+
+WORKDIR /app
+
+# Copy only the packaged JAR from build stage
+COPY --from=build /app/backend/target/employee-management-backend.jar app.jar
+
+# Change ownership to non-root user
+RUN chown ems:ems app.jar
+USER ems
+
+# Spring Boot default port
+EXPOSE 8080
+
+# Health check — used by Docker and Kubernetes liveness probes
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
+  CMD wget -qO- http://localhost:8080/actuator/health || exit 1
+
+# JVM tuning for containers
+ENV JAVA_OPTS="-Xms256m -Xmx512m -XX:+UseContainerSupport"
+
+# Run the application
+# SPRING_PROFILES_ACTIVE set via docker-compose or K8s ConfigMap
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]

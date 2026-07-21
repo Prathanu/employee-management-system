@@ -1,0 +1,18 @@
+# Backend ClusterIP Service — internal only (frontend nginx proxies /api here)
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+  namespace: employee-mgmt
+  labels:
+    app: ems-backend
+    tier: backend
+spec:
+  type: ClusterIP
+  selector:
+    app: ems-backend
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP
+      name: http

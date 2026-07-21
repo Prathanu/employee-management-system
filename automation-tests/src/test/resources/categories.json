@@ -1,0 +1,30 @@
+[
+  {
+    "name": "Authentication failures",
+    "matchedStatuses": ["failed", "broken"],
+    "messageRegex": ".*[Ll]ogin.*"
+  },
+  {
+    "name": "API / backend failures",
+    "matchedStatuses": ["failed", "broken"],
+    "traceRegex": ".*ApiSmokeTest.*"
+  },
+  {
+    "name": "UI navigation failures",
+    "matchedStatuses": ["failed", "broken"],
+    "messageRegex": ".*[Dd]ashboard.*|.*[Ee]mployee.*|.*[Nn]avigate.*"
+  },
+  {
+    "name": "Element interaction issues",
+    "matchedStatuses": ["broken"],
+    "messageRegex": ".*Element.*|.*Timeout.*|.*click.*"
+  },
+  {
+    "name": "Ignored tests",
+    "matchedStatuses": ["skipped"]
+  },
+  {
+    "name": "Passed tests",
+    "matchedStatuses": ["passed"]
+  }
+]

@@ -1,0 +1,19 @@
+# Frontend Service — exposes UI to cluster / host
+# LoadBalancer works on Docker Desktop Kubernetes (maps to localhost)
+apiVersion: v1
+kind: Service
+metadata:
+  name: ems-frontend
+  namespace: employee-mgmt
+  labels:
+    app: ems-frontend
+    tier: frontend
+spec:
+  type: LoadBalancer
+  selector:
+    app: ems-frontend
+  ports:
+    - port: 80
+      targetPort: 80
+      protocol: TCP
+      name: http

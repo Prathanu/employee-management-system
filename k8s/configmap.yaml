@@ -1,0 +1,21 @@
+# Non-sensitive application configuration
+# Sensitive values (passwords) live in secret.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ems-config
+  namespace: employee-mgmt
+  labels:
+    app.kubernetes.io/name: employee-management-system
+data:
+  # Spring Boot profile (uses application-docker.yml)
+  SPRING_PROFILES_ACTIVE: "docker"
+
+  # MySQL JDBC URL — "mysql" is the Kubernetes Service name
+  DB_URL: "jdbc:mysql://mysql:3306/employee_db?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC"
+
+  # JVM tuning for containers
+  JAVA_OPTS: "-Xms256m -Xmx512m"
+
+  # MySQL database name (used by mysql container)
+  MYSQL_DATABASE: "employee_db"

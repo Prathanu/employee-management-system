@@ -1,0 +1,32 @@
+# =============================================================================
+# Docker build context ignore — speeds up builds, reduces image size
+# =============================================================================
+.git
+.github
+docs
+*.md
+**/.env
+**/.env.local
+!**/.env.example
+
+# Build outputs (rebuilt inside Docker)
+**/target
+**/node_modules
+frontend/dist
+
+# IDE & OS
+.idea
+.vscode
+**/*.iml
+.DS_Store
+Thumbs.db
+
+# Test reports
+**/surefire-reports
+**/allure-results
+**/site
+
+# Kubernetes & Jenkins (not needed in images)
+k8s
+Jenkinsfile
+scripts

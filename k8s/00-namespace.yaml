@@ -1,0 +1,11 @@
+# Kubernetes namespace for Employee Management System
+# Prefixed 00- so bulk `kubectl apply -f k8s/` creates namespace FIRST
+# Jenkins pipeline uses: K8S_NAMESPACE = employee-mgmt
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: employee-mgmt
+  labels:
+    app.kubernetes.io/name: employee-management-system
+    app.kubernetes.io/part-of: ems
+    environment: dev
