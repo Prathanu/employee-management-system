@@ -61,8 +61,8 @@ pipeline {
                 echo '>>> Pulling latest code from GitHub...'
                 checkout scm
                 script {
-                    env.GIT_COMMIT_SHORT = sh(returnStdout: true, script: 'git rev-parse --short HEAD').trim()
-                    env.GIT_BRANCH_NAME  = sh(returnStdout: true, script: 'git rev-parse --abbrev-ref HEAD').trim()
+                    env.GIT_COMMIT_SHORT = shellOutput('git rev-parse --short HEAD')
+                    env.GIT_BRANCH_NAME  = shellOutput('git rev-parse --abbrev-ref HEAD')
                 }
                 echo "Branch: ${env.GIT_BRANCH_NAME} | Commit: ${env.GIT_COMMIT_SHORT}"
             }
@@ -74,8 +74,10 @@ pipeline {
         stage('2. Build Backend') {
             steps {
                 echo '>>> Building Spring Boot backend...'
-                dir('backend') {
-                    sh 'mvn clean package -DskipTests -B'
+                script {
+                    dir('backend') {
+                        shell 'mvn clean package -DskipTests -B'
+                    }
                 }
                 archiveArtifacts artifacts: 'backend/target/*.jar', fingerprint: true
             }
@@ -87,9 +89,11 @@ pipeline {
         stage('3. Build Frontend') {
             steps {
                 echo '>>> Building React frontend...'
-                dir('frontend') {
-                    sh 'npm ci'
-                    sh 'npm run build'
+                script {
+                    dir('frontend') {
+                        shell 'npm ci'
+                        shell 'npm run build'
+                    }
                 }
                 archiveArtifacts artifacts: 'frontend/dist/**', fingerprint: true
             }
@@ -101,8 +105,10 @@ pipeline {
         stage('4. Unit Tests') {
             steps {
                 echo '>>> Running unit and integration tests...'
-                dir('backend') {
-                    sh 'mvn test -B'
+                script {
+                    dir('backend') {
+                        shell 'mvn test -B'
+                    }
                 }
             }
             post {
@@ -130,14 +136,16 @@ pipeline {
             steps {
                 echo '>>> Running SonarQube analysis...'
                 withCredentials([string(credentialsId: 'sonar-token', variable: 'SONAR_TOKEN')]) {
-                    dir('backend') {
-                        sh """
-                            mvn verify sonar:sonar -B \
-                              -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
-                              -Dsonar.host.url=${SONAR_HOST_URL} \
-                              -Dsonar.token=\${SONAR_TOKEN} \
-                              -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
-                        """
+                    script {
+                        dir('backend') {
+                            shell """
+                                mvn verify sonar:sonar -B \
+                                  -Dsonar.projectKey=${SONAR_PROJECT_KEY} \
+                                  -Dsonar.host.url=${SONAR_HOST_URL} \
+                                  -Dsonar.token=\${SONAR_TOKEN} \
+                                  -Dsonar.coverage.jacoco.xmlReportPaths=target/site/jacoco/jacoco.xml
+                            """
+                        }
                     }
                 }
             }
@@ -200,24 +208,20 @@ pipeline {
             steps {
                 echo ">>> Deploying to Kubernetes namespace: ${K8S_NAMESPACE}..."
                 withKubeConfig([credentialsId: 'kubeconfig-credentials']) {
-                    sh """
-                        kubectl apply -f k8s/00-namespace.yaml
-                        kubectl apply -f k8s/configmap.yaml
-                        kubectl apply -f k8s/secret.yaml
-                        kubectl apply -f k8s/mysql-deployment.yaml
-                        kubectl apply -f k8s/backend-deployment.yaml
-                        kubectl apply -f k8s/frontend-deployment.yaml
-                        kubectl apply -f k8s/backend-service.yaml
-                        kubectl apply -f k8s/frontend-service.yaml
-
-                        kubectl set image deployment/${K8S_DEPLOYMENT_BACKEND} \
-                          backend=${BACKEND_IMAGE}:${IMAGE_TAG} \
-                          -n ${K8S_NAMESPACE}
-
-                        kubectl set image deployment/${K8S_DEPLOYMENT_FRONTEND} \
-                          frontend=${FRONTEND_IMAGE}:${IMAGE_TAG} \
-                          -n ${K8S_NAMESPACE}
-                    """
+                    script {
+                        shell """
+                            kubectl apply -f k8s/00-namespace.yaml
+                            kubectl apply -f k8s/configmap.yaml
+                            kubectl apply -f k8s/secret.yaml
+                            kubectl apply -f k8s/mysql-deployment.yaml
+                            kubectl apply -f k8s/backend-deployment.yaml
+                            kubectl apply -f k8s/frontend-deployment.yaml
+                            kubectl apply -f k8s/backend-service.yaml
+                            kubectl apply -f k8s/frontend-service.yaml
+                            kubectl set image deployment/${K8S_DEPLOYMENT_BACKEND} backend=${BACKEND_IMAGE}:${IMAGE_TAG} -n ${K8S_NAMESPACE}
+                            kubectl set image deployment/${K8S_DEPLOYMENT_FRONTEND} frontend=${FRONTEND_IMAGE}:${IMAGE_TAG} -n ${K8S_NAMESPACE}
+                        """
+                    }
                 }
             }
         }
@@ -235,16 +239,18 @@ pipeline {
             steps {
                 echo '>>> Waiting for Kubernetes rollout to complete...'
                 withKubeConfig([credentialsId: 'kubeconfig-credentials']) {
-                    sh """
-                        kubectl rollout status deployment/${K8S_DEPLOYMENT_BACKEND} \
-                          -n ${K8S_NAMESPACE} --timeout=300s
-                        kubectl rollout status deployment/${K8S_DEPLOYMENT_FRONTEND} \
-                          -n ${K8S_NAMESPACE} --timeout=300s
-                        kubectl get pods -n ${K8S_NAMESPACE}
-                    """
+                    script {
+                        shell """
+                            kubectl rollout status deployment/${K8S_DEPLOYMENT_BACKEND} -n ${K8S_NAMESPACE} --timeout=300s
+                            kubectl rollout status deployment/${K8S_DEPLOYMENT_FRONTEND} -n ${K8S_NAMESPACE} --timeout=300s
+                            kubectl get pods -n ${K8S_NAMESPACE}
+                        """
+                    }
                 }
-                echo '>>> Verifying backend health endpoint...'
-                sh "curl -f ${API_BASE_URL}/actuator/health || echo 'Health check skipped — update API_BASE_URL'"
+                script {
+                    echo '>>> Verifying backend health endpoint...'
+                    shell "curl -f ${API_BASE_URL}/actuator/health || echo Health check skipped"
+                }
             }
         }
 
@@ -260,12 +266,10 @@ pipeline {
             }
             steps {
                 echo '>>> Running Selenium smoke tests...'
-                dir('automation-tests') {
-                    sh """
-                        mvn clean test -B \
-                          -Dbase.url=${APP_BASE_URL} \
-                          -Dapi.url=${API_BASE_URL}
-                    """
+                script {
+                    dir('automation-tests') {
+                        shell "mvn clean test -B -Dbase.url=${APP_BASE_URL} -Dapi.url=${API_BASE_URL}"
+                    }
                 }
             }
             post {
@@ -284,8 +288,10 @@ pipeline {
             }
             steps {
                 echo '>>> Generating Allure report...'
-                dir('automation-tests') {
-                    sh 'mvn allure:report -B || echo "Allure report generation skipped"'
+                script {
+                    dir('automation-tests') {
+                        shell 'mvn allure:report -B || echo Allure report generation skipped'
+                    }
                 }
             }
             post {
@@ -325,6 +331,24 @@ pipeline {
             cleanWs()
         }
     }
+}
+
+// ─────────────────────────────────────────────────────────────
+// Cross-platform shell helpers (Windows controller + Linux agents)
+// ─────────────────────────────────────────────────────────────
+def shell(String script) {
+    if (isUnix()) {
+        sh script
+    } else {
+        bat script
+    }
+}
+
+def shellOutput(String script) {
+    if (isUnix()) {
+        return sh(returnStdout: true, script: script).trim()
+    }
+    return bat(returnStdout: true, script: "@echo off\r\n${script}").trim()
 }
 
 // ─────────────────────────────────────────────────────────────
@@ -372,11 +396,13 @@ Build URL: ${buildUrl}""".trim()
 }""".trim()
 
         writeFile file: 'teams-payload.json', text: teamsPayload
-        sh """
-            curl -sS -f -X POST '${TEAMS_WEBHOOK_URL}' \
-              -H 'Content-Type: application/json' \
-              -d @teams-payload.json
-        """
+        withEnv(["TEAMS_URL=${TEAMS_WEBHOOK_URL}"]) {
+            if (isUnix()) {
+                sh 'curl -sS -f -X POST "$TEAMS_URL" -H "Content-Type: application/json" -d @teams-payload.json'
+            } else {
+                bat 'curl -sS -f -X POST "%TEAMS_URL%" -H "Content-Type: application/json" -d @teams-payload.json'
+            }
+        }
         echo 'Teams notification sent.'
     } catch (Exception e) {
         echo "Teams notification skipped: ${e.message}"
