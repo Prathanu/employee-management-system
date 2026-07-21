@@ -32,8 +32,7 @@ pipeline {
         SONAR_PROJECT_KEY     = 'employee-management'
         SONAR_HOST_URL        = "${env.SONAR_HOST_URL ?: 'http://localhost:9000'}"
 
-        // Notifications (stored as Jenkins Secret text credentials)
-        SLACK_WEBHOOK_URL     = credentials('slack-webhook-url')
+        // Notifications — Teams webhook + Email (Step 12)
         TEAMS_WEBHOOK_URL     = credentials('teams-webhook-url')
         EMAIL_RECIPIENTS      = "${env.EMAIL_RECIPIENTS ?: 'team@company.com'}"
     }
@@ -202,7 +201,7 @@ pipeline {
                 echo ">>> Deploying to Kubernetes namespace: ${K8S_NAMESPACE}..."
                 withKubeConfig([credentialsId: 'kubeconfig-credentials']) {
                     sh """
-                        kubectl apply -f k8s/namespace.yaml
+                        kubectl apply -f k8s/00-namespace.yaml
                         kubectl apply -f k8s/configmap.yaml
                         kubectl apply -f k8s/secret.yaml
                         kubectl apply -f k8s/mysql-deployment.yaml
@@ -302,7 +301,7 @@ pipeline {
     }
 
     // ─────────────────────────────────────────────
-    // POST: Notifications — Slack, Teams, Email
+    // POST: Notifications — Microsoft Teams + Email
     // ─────────────────────────────────────────────
     post {
         success {
@@ -329,68 +328,83 @@ pipeline {
 }
 
 // ─────────────────────────────────────────────────────────────
-// Notification helper — Slack, Microsoft Teams, Email
+// Notification helper — Microsoft Teams + Email
 // ─────────────────────────────────────────────────────────────
 def sendNotifications(String status) {
-    def color  = status == 'SUCCESS' ? 'good' : 'danger'
-    def emoji  = status == 'SUCCESS' ? ':white_check_mark:' : ':x:'
-    def message = """
-${emoji} *${APP_NAME}* — Build #${env.BUILD_NUMBER} *${status}*
-• Branch: `${env.GIT_BRANCH_NAME}`
-• Commit: `${env.GIT_COMMIT_SHORT}`
-• Environment: `${params.DEPLOY_ENV}`
-• Build URL: ${env.BUILD_URL}
-    """.trim()
+    def statusIcon   = status == 'SUCCESS' ? '✅' : (status == 'UNSTABLE' ? '⚠️' : '❌')
+    def themeColor   = status == 'SUCCESS' ? '00B050' : (status == 'UNSTABLE' ? 'FFC000' : 'FF0000')
+    def branch       = env.GIT_BRANCH_NAME ?: 'unknown'
+    def commit       = env.GIT_COMMIT_SHORT ?: 'unknown'
+    def buildUrl     = env.BUILD_URL ?: ''
+    def environment  = params.DEPLOY_ENV ?: 'dev'
 
-    // Slack notification
-    try {
-        sh """
-            curl -s -X POST '${SLACK_WEBHOOK_URL}' \
-              -H 'Content-Type: application/json' \
-              -d '{"text": "${message.replace('"', '\\"').replace('\n', '\\n')}"}'
-        """
-    } catch (Exception e) {
-        echo "Slack notification skipped: ${e.message}"
-    }
+    def plainMessage = """${statusIcon} ${APP_NAME} — Build #${env.BUILD_NUMBER} ${status}
+Branch: ${branch}
+Commit: ${commit}
+Environment: ${environment}
+Build URL: ${buildUrl}""".trim()
 
-    // Microsoft Teams notification
+    // Microsoft Teams notification (Incoming Webhook / MessageCard)
     try {
+        def teamsPayload = """
+{
+  "@type": "MessageCard",
+  "@context": "http://schema.org/extensions",
+  "themeColor": "${themeColor}",
+  "summary": "${APP_NAME} — Build #${env.BUILD_NUMBER} ${status}",
+  "sections": [{
+    "activityTitle": "${statusIcon} ${APP_NAME}",
+    "activitySubtitle": "Build #${env.BUILD_NUMBER} — ${status}",
+    "facts": [
+      {"name": "Status", "value": "${status}"},
+      {"name": "Branch", "value": "${branch}"},
+      {"name": "Commit", "value": "${commit}"},
+      {"name": "Environment", "value": "${environment}"},
+      {"name": "Duration", "value": "${currentBuild.durationString ?: 'N/A'}"}
+    ],
+    "markdown": true
+  }],
+  "potentialAction": [{
+    "@type": "OpenUri",
+    "name": "View Build in Jenkins",
+    "targets": [{"os": "default", "uri": "${buildUrl}"}]
+  }]
+}""".trim()
+
+        writeFile file: 'teams-payload.json', text: teamsPayload
         sh """
-            curl -s -X POST '${TEAMS_WEBHOOK_URL}' \
+            curl -sS -f -X POST '${TEAMS_WEBHOOK_URL}' \
               -H 'Content-Type: application/json' \
-              -d '{
-                "@type": "MessageCard",
-                "@context": "http://schema.org/extensions",
-                "themeColor": "${status == 'SUCCESS' ? '00FF00' : 'FF0000'}",
-                "summary": "Build ${status}",
-                "sections": [{
-                  "activityTitle": "${APP_NAME} — Build #${env.BUILD_NUMBER}",
-                  "facts": [
-                    {"name": "Status", "value": "${status}"},
-                    {"name": "Branch", "value": "${env.GIT_BRANCH_NAME}"},
-                    {"name": "Environment", "value": "${params.DEPLOY_ENV}"}
-                  ],
-                  "markdown": true
-                }],
-                "potentialAction": [{
-                  "@type": "OpenUri",
-                  "name": "View Build",
-                  "targets": [{"os": "default", "uri": "${env.BUILD_URL}"}]
-                }]
-              }'
+              -d @teams-payload.json
         """
+        echo 'Teams notification sent.'
     } catch (Exception e) {
         echo "Teams notification skipped: ${e.message}"
     }
 
-    // Email notification (via Jenkins built-in emailext plugin)
+    // Email notification (Email Extension plugin + SMTP configured in Jenkins)
     try {
+        def htmlBody = """
+<h2>${statusIcon} ${APP_NAME}</h2>
+<p><strong>Build #${env.BUILD_NUMBER}</strong> — <strong>${status}</strong></p>
+<table border="1" cellpadding="6" cellspacing="0">
+  <tr><td><b>Branch</b></td><td>${branch}</td></tr>
+  <tr><td><b>Commit</b></td><td>${commit}</td></tr>
+  <tr><td><b>Environment</b></td><td>${environment}</td></tr>
+  <tr><td><b>Duration</b></td><td>${currentBuild.durationString ?: 'N/A'}</td></tr>
+  <tr><td><b>Build URL</b></td><td><a href="${buildUrl}">${buildUrl}</a></td></tr>
+</table>
+<p><i>Employee Management System — Jenkins CI/CD Pipeline</i></p>
+""".trim()
+
         emailext(
-            subject: "[${status}] ${APP_NAME} — Build #${env.BUILD_NUMBER}",
-            body: message,
+            subject: "[${status}] ${APP_NAME} — Build #${env.BUILD_NUMBER} (${environment})",
+            body: htmlBody,
+            mimeType: 'text/html',
             to: "${EMAIL_RECIPIENTS}",
             attachLog: status != 'SUCCESS'
         )
+        echo "Email notification sent to ${EMAIL_RECIPIENTS}."
     } catch (Exception e) {
         echo "Email notification skipped: ${e.message}"
     }
