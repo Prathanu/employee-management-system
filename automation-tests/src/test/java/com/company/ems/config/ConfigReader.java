@@ -46,6 +46,16 @@ public final class ConfigReader {
         return get("browser", "chrome");
     }
 
+    /** Optional explicit browser binary — e.g. C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe */
+    public static String getBrowserBinary() {
+        String configured = get("browser.binary", "");
+        if (!configured.isBlank()) {
+            return configured.trim();
+        }
+        String env = System.getenv("CHROME_BIN");
+        return env != null ? env.trim() : "";
+    }
+
     public static boolean isHeadless() {
         return Boolean.parseBoolean(get("headless", "false"));
     }

@@ -279,7 +279,8 @@ pipeline {
                 echo '>>> Running Selenium smoke tests...'
                 script {
                     dir('automation-tests') {
-                        shell "mvn clean test -B -Dbase.url=${APP_BASE_URL} -Dapi.url=${API_BASE_URL}"
+                        // Edge + headless: Jenkins Windows service cannot see user-installed Chrome
+                        shell "mvn clean test -B -Dbase.url=${APP_BASE_URL} -Dapi.url=${API_BASE_URL} -Dheadless=true -Dbrowser=edge"
                     }
                 }
             }

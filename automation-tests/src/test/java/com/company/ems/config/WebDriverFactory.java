@@ -9,6 +9,7 @@ import org.openqa.selenium.edge.EdgeOptions;
 import org.openqa.selenium.firefox.FirefoxDriver;
 import org.openqa.selenium.firefox.FirefoxOptions;
 
+import java.io.File;
 import java.time.Duration;
 
 /**
@@ -36,10 +37,10 @@ public final class WebDriverFactory {
     private static WebDriver createChrome() {
         WebDriverManager.chromedriver().setup();
         ChromeOptions options = new ChromeOptions();
-        if (ConfigReader.isHeadless()) {
-            options.addArguments("--headless=new", "--window-size=1920,1080");
-        }
-        options.addArguments("--disable-gpu", "--no-sandbox", "--disable-dev-shm-usage");
+        applyChromiumOptions(options,
+                ConfigReader.getBrowserBinary(),
+                "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+                "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe");
         return new ChromeDriver(options);
     }
 
@@ -55,9 +56,29 @@ public final class WebDriverFactory {
     private static WebDriver createEdge() {
         WebDriverManager.edgedriver().setup();
         EdgeOptions options = new EdgeOptions();
-        if (ConfigReader.isHeadless()) {
-            options.addArguments("--headless=new");
-        }
+        applyChromiumOptions(options,
+                ConfigReader.getBrowserBinary(),
+                "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
+                "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe");
         return new EdgeDriver(options);
+    }
+
+    private static void applyChromiumOptions(org.openqa.selenium.chromium.ChromiumOptions<?> options,
+                                             String configuredBinary,
+                                             String... defaultPaths) {
+        if (configuredBinary != null && !configuredBinary.isBlank()) {
+            options.setBinary(configuredBinary);
+        } else {
+            for (String path : defaultPaths) {
+                if (new File(path).exists()) {
+                    options.setBinary(path);
+                    break;
+                }
+            }
+        }
+        if (ConfigReader.isHeadless()) {
+            options.addArguments("--headless=new", "--window-size=1920,1080");
+        }
+        options.addArguments("--disable-gpu", "--no-sandbox", "--disable-dev-shm-usage");
     }
 }

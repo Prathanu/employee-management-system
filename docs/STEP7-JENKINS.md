@@ -219,6 +219,7 @@ On success/failure/unstable sends alerts to **Microsoft Teams** and **Email** (s
 | `mvn: command not found` | Configure Maven in Global Tools |
 | `npm: command not found` | Configure NodeJS in Global Tools |
 | SonarQube fails | Set `RUN_SONAR=false` until SonarQube is installed |
+| `Could not find credentials entry with ID 'sonar-token'` | Set `RUN_SONAR=false` on build, or add `sonar-token` credential in Jenkins |
 | Docker stages skipped | Complete Step 8 (Dockerfiles) first |
 | **Stage 6 fails in ~5s** | **Docker Hub 401** — run `docker login` on Jenkins machine; verify `docker-registry-credentials` credential |
 | `Cannot connect to Docker daemon` | Start Docker Desktop; ensure Jenkins can access Docker (run Jenkins as your user, not Local System) |
@@ -226,4 +227,5 @@ On success/failure/unstable sends alerts to **Microsoft Teams** and **Email** (s
 | K8s stages skipped | Complete Step 9 (K8s manifests) first |
 | Teams notification fails | Verify `teams-webhook-url` credential; test webhook with PowerShell (Step 12 doc) |
 | Email not received | Configure SMTP in Jenkins System; set `EMAIL_RECIPIENTS` env var |
+| Stage 10 `cannot find Chrome binary` | Pipeline uses Edge headless on Windows; install Chrome system-wide or set `SKIP_SMOKE_TESTS=true` |
 | Git clone fails | Check `github-credentials-id` PAT permissions |
