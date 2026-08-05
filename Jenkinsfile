@@ -13,8 +13,8 @@ pipeline {
         GIT_CREDENTIALS       = credentials('github-credentials-id')
 
         // Docker (configure in Jenkins Credentials / env)
-        DOCKER_REGISTRY       = "${env.DOCKER_REGISTRY ?: 'docker.io'}"
-        DOCKER_USER           = "${env.DOCKER_USER ?: 'your-dockerhub-user'}"
+        DOCKER_REGISTRY       = "${env.DOCKER_REGISTRY ?: 'registry-1.docker.io'}"
+        DOCKER_USER           = "${env.DOCKER_USER ?: 'prataptm'}"
         BACKEND_IMAGE         = "${DOCKER_REGISTRY}/${DOCKER_USER}/ems-backend"
         FRONTEND_IMAGE        = "${DOCKER_REGISTRY}/${DOCKER_USER}/ems-frontend"
         IMAGE_TAG             = "${env.BUILD_NUMBER}"
@@ -25,8 +25,8 @@ pipeline {
         K8S_DEPLOYMENT_FRONTEND = 'ems-frontend'
 
         // Application URLs (after K8s deploy — update for your cluster)
-        APP_BASE_URL          = "${env.APP_BASE_URL ?: 'http://localhost:3000'}"
-        API_BASE_URL          = "${env.API_BASE_URL ?: 'http://localhost:8080'}"
+        APP_BASE_URL          = "${env.APP_BASE_URL ?: 'http://localhost'}"
+        API_BASE_URL          = "${env.API_BASE_URL ?: 'http://localhost'}"
 
         // SonarQube (optional — Step 7)
         SONAR_PROJECT_KEY     = 'employee-management'
@@ -46,7 +46,8 @@ pipeline {
 
     parameters {
         choice(name: 'DEPLOY_ENV', choices: ['dev', 'staging', 'prod'], description: 'Target environment')
-        booleanParam(name: 'SKIP_DEPLOY', defaultValue: false, description: 'Skip Docker push and K8s deploy')
+        booleanParam(name: 'SKIP_DEPLOY', defaultValue: false, description: 'Skip Docker build/push and K8s deploy')
+        booleanParam(name: 'SKIP_DOCKER_PUSH', defaultValue: false, description: 'Skip Docker Hub push — use local images (Docker Desktop K8s)')
         booleanParam(name: 'SKIP_SMOKE_TESTS', defaultValue: false, description: 'Skip Selenium smoke tests')
         booleanParam(name: 'RUN_SONAR', defaultValue: true, description: 'Run SonarQube static analysis')
     }
@@ -164,10 +165,14 @@ pipeline {
             steps {
                 echo '>>> Building Docker images...'
                 script {
-                    docker.build("${BACKEND_IMAGE}:${IMAGE_TAG}",  "-f docker/Dockerfile.backend .")
-                    docker.build("${BACKEND_IMAGE}:latest",       "-f docker/Dockerfile.backend .")
-                    docker.build("${FRONTEND_IMAGE}:${IMAGE_TAG}", "-f docker/Dockerfile.frontend .")
-                    docker.build("${FRONTEND_IMAGE}:latest",       "-f docker/Dockerfile.frontend .")
+                    // Login required — Docker Hub blocks anonymous pulls of base images (maven, temurin, nginx)
+                    dockerLogin()
+                    docker.withRegistry("https://${DOCKER_REGISTRY}/", 'docker-registry-credentials') {
+                        def backendImg = docker.build("${BACKEND_IMAGE}:${IMAGE_TAG}", "-f docker/Dockerfile.backend .")
+                        backendImg.tag("${BACKEND_IMAGE}:latest")
+                        def frontendImg = docker.build("${FRONTEND_IMAGE}:${IMAGE_TAG}", "-f docker/Dockerfile.frontend .")
+                        frontendImg.tag("${FRONTEND_IMAGE}:latest")
+                    }
                 }
             }
         }
@@ -179,13 +184,14 @@ pipeline {
             when {
                 allOf {
                     expression { !params.SKIP_DEPLOY }
+                    expression { !params.SKIP_DOCKER_PUSH }
                     expression { fileExists('docker/Dockerfile.backend') }
                 }
             }
             steps {
                 echo '>>> Pushing Docker images to registry...'
                 script {
-                    docker.withRegistry("https://${DOCKER_REGISTRY}", 'docker-registry-credentials') {
+                    docker.withRegistry("https://${DOCKER_REGISTRY}/", 'docker-registry-credentials') {
                         docker.image("${BACKEND_IMAGE}:${IMAGE_TAG}").push()
                         docker.image("${BACKEND_IMAGE}:latest").push()
                         docker.image("${FRONTEND_IMAGE}:${IMAGE_TAG}").push()
@@ -336,6 +342,16 @@ pipeline {
 // ─────────────────────────────────────────────────────────────
 // Cross-platform shell helpers (Windows controller + Linux agents)
 // ─────────────────────────────────────────────────────────────
+def dockerLogin() {
+    withCredentials([usernamePassword(credentialsId: 'docker-registry-credentials', usernameVariable: 'REG_USER', passwordVariable: 'REG_PASS')]) {
+        if (isUnix()) {
+            sh 'echo "$REG_PASS" | docker login -u "$REG_USER" --password-stdin'
+        } else {
+            bat 'docker login -u %REG_USER% -p %REG_PASS%'
+        }
+    }
+}
+
 def shell(String script) {
     if (isUnix()) {
         sh script

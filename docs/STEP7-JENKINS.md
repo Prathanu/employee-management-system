@@ -20,7 +20,7 @@ GitHub Push
 │  9. Verify Rollout    ← kubectl rollout status           │
 │  10. Smoke Tests      ← Selenium TestNG (Step 10)        │
 │  11. Allure Report    ← Generate & publish (Step 11)     │
-│  12. Notify           ← Slack / Teams / Email            │
+│  12. Notify           ← Teams + Email (Step 12)          │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -69,8 +69,9 @@ Go to **Manage Jenkins → Credentials → System → Global credentials → Add
 | `docker-registry-credentials` | Username/Password | Docker Hub creds | Push images |
 | `kubeconfig-credentials` | Secret file | `~/.kube/config` | K8s deploy |
 | `sonar-token` | Secret text | SonarQube token | Static analysis |
-| `slack-webhook-url` | Secret text | Slack webhook URL | Slack notify |
-| `teams-webhook-url` | Secret text | Teams webhook URL | Teams notify |
+| `teams-webhook-url` | Secret text | Teams Incoming Webhook URL | Teams notify |
+
+> Email recipients are set via Jenkins env var `EMAIL_RECIPIENTS` (not a credential).
 
 ### GitHub Personal Access Token
 
@@ -78,16 +79,20 @@ Go to **Manage Jenkins → Credentials → System → Global credentials → Add
 2. Generate token with scopes: `repo`, `read:org`
 3. Add as `github-credentials-id` in Jenkins
 
-### Slack Webhook
-
-1. https://api.slack.com/apps → Create New App
-2. Incoming Webhooks → Activate → Add New Webhook to Workspace
-3. Copy webhook URL → Jenkins credential `slack-webhook-url`
-
 ### Microsoft Teams Webhook
 
-1. Teams channel → Connectors → Incoming Webhook
-2. Copy URL → Jenkins credential `teams-webhook-url`
+See full guide: `docs/STEP12-NOTIFICATIONS.md`
+
+1. Teams channel → **⋯** → **Workflows** → template **Send webhook alerts to a channel**
+2. Copy HTTP POST URL → Jenkins credential `teams-webhook-url` (Secret text)
+
+> Old **Connectors** menu is retired by Microsoft — use **Workflows** instead.
+
+### Email (SMTP)
+
+1. **Manage Jenkins → System** → configure **E-mail Notification** (SMTP server, TLS, credentials)
+2. Set global env var `EMAIL_RECIPIENTS=you@email.com`
+3. Install **Email Extension Plugin**
 
 ---
 
@@ -189,7 +194,7 @@ Runs TestNG smoke suite against deployed application (Step 10 required).
 Generates and publishes Allure HTML test report (Step 11 required).
 
 ### Post — Notifications
-On success/failure sends alerts to Slack, Microsoft Teams, and Email.
+On success/failure/unstable sends alerts to **Microsoft Teams** and **Email** (see `docs/STEP12-NOTIFICATIONS.md`).
 
 ---
 
@@ -215,6 +220,10 @@ On success/failure sends alerts to Slack, Microsoft Teams, and Email.
 | `npm: command not found` | Configure NodeJS in Global Tools |
 | SonarQube fails | Set `RUN_SONAR=false` until SonarQube is installed |
 | Docker stages skipped | Complete Step 8 (Dockerfiles) first |
+| **Stage 6 fails in ~5s** | **Docker Hub 401** — run `docker login` on Jenkins machine; verify `docker-registry-credentials` credential |
+| `Cannot connect to Docker daemon` | Start Docker Desktop; ensure Jenkins can access Docker (run Jenkins as your user, not Local System) |
+| `docker-registry-credentials not found` | Add Docker Hub username + password/token in Jenkins Credentials |
 | K8s stages skipped | Complete Step 9 (K8s manifests) first |
-| Slack notification fails | Verify `slack-webhook-url` credential |
+| Teams notification fails | Verify `teams-webhook-url` credential; test webhook with PowerShell (Step 12 doc) |
+| Email not received | Configure SMTP in Jenkins System; set `EMAIL_RECIPIENTS` env var |
 | Git clone fails | Check `github-credentials-id` PAT permissions |
