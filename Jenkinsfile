@@ -276,11 +276,11 @@ pipeline {
                 }
             }
             steps {
-                echo '>>> Running Selenium smoke tests...'
+                echo '>>> Running API smoke tests (no browser — corporate network safe)...'
                 script {
                     dir('automation-tests') {
-                        // Edge + headless: Jenkins Windows service cannot see user-installed Chrome
-                        shell "mvn clean test -B -Dbase.url=${APP_BASE_URL} -Dapi.url=${API_BASE_URL} -Dheadless=true -Dbrowser=edge"
+                        // API-only in Jenkins: avoids Chrome/Edge driver download (msedgedriver.azureedge.net blocked)
+                        shell "mvn clean test -B -Dsurefire.suiteXmlFiles=testng-jenkins.xml -Dbase.url=${APP_BASE_URL} -Dapi.url=${API_BASE_URL}"
                     }
                 }
             }

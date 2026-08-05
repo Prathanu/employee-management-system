@@ -111,6 +111,7 @@ mvn clean test
 | [Step 5 Unit Tests](docs/STEP5-UNIT-TESTS.md) | Testing guide |
 | [Git Workflow](docs/GIT-WORKFLOW.md) | Branching & commits |
 | [Jenkins Pipeline](docs/STEP7-JENKINS.md) | CI/CD setup guide |
+| [Docker Guide](docs/STEP8-DOCKER.md) | Containerization |
 | [Docker Troubleshooting](docs/TROUBLESHOOTING-DOCKER.md) | Docker setup help |
 
 ---
@@ -140,7 +141,7 @@ mvn clean test
 | 5 | Done | Unit & API tests (32 tests) |
 | 6 | Done | Git & GitHub configuration |
 | 7 | Done | Jenkins CI/CD pipeline |
-| 8 | Pending | Dockerfile |
+| 8 | Done | Dockerfile |
 | 9 | Pending | Kubernetes manifests |
 | 10 | Pending | Selenium automation |
 | 11 | Pending | Allure reporting |

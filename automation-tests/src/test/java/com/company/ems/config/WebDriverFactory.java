@@ -35,13 +35,27 @@ public final class WebDriverFactory {
     }
 
     private static WebDriver createChrome() {
-        WebDriverManager.chromedriver().setup();
+        setupChromeDriver();
         ChromeOptions options = new ChromeOptions();
         applyChromiumOptions(options,
                 ConfigReader.getBrowserBinary(),
                 "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
                 "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe");
         return new ChromeDriver(options);
+    }
+
+    private static void setupChromeDriver() {
+        String driverPath = findFirstExisting(
+                System.getProperty("webdriver.chrome.driver"),
+                System.getenv("CHROME_DRIVER_PATH"),
+                "C:\\Program Files\\Google\\Chrome\\Application\\chromedriver.exe",
+                "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chromedriver.exe"
+        );
+        if (driverPath != null) {
+            System.setProperty("webdriver.chrome.driver", driverPath);
+        } else {
+            WebDriverManager.chromedriver().setup();
+        }
     }
 
     private static WebDriver createFirefox() {
@@ -54,13 +68,27 @@ public final class WebDriverFactory {
     }
 
     private static WebDriver createEdge() {
-        WebDriverManager.edgedriver().setup();
+        setupEdgeDriver();
         EdgeOptions options = new EdgeOptions();
         applyChromiumOptions(options,
                 ConfigReader.getBrowserBinary(),
                 "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe",
                 "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe");
         return new EdgeDriver(options);
+    }
+
+    private static void setupEdgeDriver() {
+        String driverPath = findFirstExisting(
+                System.getProperty("webdriver.edge.driver"),
+                System.getenv("EDGE_DRIVER_PATH"),
+                "C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedgedriver.exe",
+                "C:\\Program Files\\Microsoft\\Edge\\Application\\msedgedriver.exe"
+        );
+        if (driverPath != null) {
+            System.setProperty("webdriver.edge.driver", driverPath);
+        } else {
+            WebDriverManager.edgedriver().setup();
+        }
     }
 
     private static void applyChromiumOptions(org.openqa.selenium.chromium.ChromiumOptions<?> options,
@@ -80,5 +108,17 @@ public final class WebDriverFactory {
             options.addArguments("--headless=new", "--window-size=1920,1080");
         }
         options.addArguments("--disable-gpu", "--no-sandbox", "--disable-dev-shm-usage");
+    }
+
+    private static String findFirstExisting(String... paths) {
+        if (paths == null) {
+            return null;
+        }
+        for (String path : paths) {
+            if (path != null && !path.isBlank() && new File(path).exists()) {
+                return path;
+            }
+        }
+        return null;
     }
 }

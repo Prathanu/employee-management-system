@@ -1,0 +1,14 @@
+<!DOCTYPE suite SYSTEM "https://testng.org/testng-1.0.dtd">
+<!-- Jenkins CI: API-only smoke tests (no browser / WebDriver download required) -->
+<suite name="Jenkins API Smoke Suite" verbose="1">
+    <listeners>
+        <listener class-name="io.qameta.allure.testng.AllureTestNg"/>
+        <listener class-name="com.company.ems.listeners.AllureEnvironmentListener"/>
+    </listeners>
+
+    <test name="API Smoke Tests">
+        <classes>
+            <class name="com.company.ems.tests.ApiSmokeTest"/>
+        </classes>
+    </test>
+</suite>

@@ -227,5 +227,6 @@ On success/failure/unstable sends alerts to **Microsoft Teams** and **Email** (s
 | K8s stages skipped | Complete Step 9 (K8s manifests) first |
 | Teams notification fails | Verify `teams-webhook-url` credential; test webhook with PowerShell (Step 12 doc) |
 | Email not received | Configure SMTP in Jenkins System; set `EMAIL_RECIPIENTS` env var |
-| Stage 10 `cannot find Chrome binary` | Pipeline uses Edge headless on Windows; install Chrome system-wide or set `SKIP_SMOKE_TESTS=true` |
+| Stage 10 `cannot find Chrome binary` | Pipeline uses API-only tests in Jenkins; run full UI suite locally with `mvn test` |
+| Stage 10 `UnknownHostException: msedgedriver.azureedge.net` | Corporate network blocks driver download — Jenkins uses `testng-jenkins.xml` (API only) |
 | Git clone fails | Check `github-credentials-id` PAT permissions |
