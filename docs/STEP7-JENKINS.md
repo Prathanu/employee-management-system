@@ -222,11 +222,13 @@ On success/failure/unstable sends alerts to **Microsoft Teams** and **Email** (s
 | `Could not find credentials entry with ID 'sonar-token'` | Set `RUN_SONAR=false` on build, or add `sonar-token` credential in Jenkins |
 | Docker stages skipped | Complete Step 8 (Dockerfiles) first |
 | **Stage 6 fails in ~5s** | **Docker Hub 401** — run `docker login` on Jenkins machine; verify `docker-registry-credentials` credential |
+| Stage 6 `docker is not recognized` | Start **Docker Desktop**; add `C:\Program Files\Docker\Docker\resources\bin` to **System** PATH; restart Jenkins service |
 | `Cannot connect to Docker daemon` | Start Docker Desktop; ensure Jenkins can access Docker (run Jenkins as your user, not Local System) |
 | `docker-registry-credentials not found` | Add Docker Hub username + password/token in Jenkins Credentials |
 | K8s stages skipped | Complete Step 9 (K8s manifests) first |
 | Teams notification fails | Verify `teams-webhook-url` credential; test webhook with PowerShell (Step 12 doc) |
 | Email not received | Configure SMTP in Jenkins System; set `EMAIL_RECIPIENTS` env var |
-| Stage 10 `cannot find Chrome binary` | Pipeline uses API-only tests in Jenkins; run full UI suite locally with `mvn test` |
+| Stage 9 backend rollout timeout | Backend JVM can take 3–5 min on Docker Desktop; startupProbe added; Jenkins timeout raised to 600s |
+| Stage 10 skipped | Ensure `SKIP_SMOKE_TESTS` is **unchecked** when building |
 | Stage 10 `UnknownHostException: msedgedriver.azureedge.net` | Corporate network blocks driver download — Jenkins uses `testng-jenkins.xml` (API only) |
 | Git clone fails | Check `github-credentials-id` PAT permissions |

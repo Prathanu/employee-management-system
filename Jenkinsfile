@@ -170,6 +170,7 @@ pipeline {
             steps {
                 echo '>>> Building Docker images...'
                 script {
+                    ensureDockerAvailable()
                     // Login required — Docker Hub blocks anonymous pulls of base images (maven, temurin, nginx)
                     dockerLogin()
                     docker.withRegistry("https://${DOCKER_REGISTRY}/", 'docker-registry-credentials') {
@@ -251,11 +252,9 @@ pipeline {
                 echo '>>> Waiting for Kubernetes rollout to complete...'
                 withKubeConfig([credentialsId: 'kubeconfig-credentials']) {
                     script {
-                        shell """
-                            kubectl rollout status deployment/${K8S_DEPLOYMENT_BACKEND} -n ${K8S_NAMESPACE} --timeout=300s
-                            kubectl rollout status deployment/${K8S_DEPLOYMENT_FRONTEND} -n ${K8S_NAMESPACE} --timeout=300s
-                            kubectl get pods -n ${K8S_NAMESPACE}
-                        """
+                        shell "kubectl rollout status deployment/${K8S_DEPLOYMENT_BACKEND} -n ${K8S_NAMESPACE} --timeout=600s"
+                        shell "kubectl rollout status deployment/${K8S_DEPLOYMENT_FRONTEND} -n ${K8S_NAMESPACE} --timeout=300s"
+                        shell "kubectl get pods -n ${K8S_NAMESPACE}"
                     }
                 }
                 script {
@@ -348,6 +347,27 @@ pipeline {
 // ─────────────────────────────────────────────────────────────
 // Cross-platform shell helpers (Windows controller + Linux agents)
 // ─────────────────────────────────────────────────────────────
+def ensureDockerAvailable() {
+    if (!isUnix()) {
+        def dockerBinDir = 'C:\\Program Files\\Docker\\Docker\\resources\\bin'
+        if (fileExists("${dockerBinDir}\\docker.exe")) {
+            env.PATH = "${dockerBinDir};${env.PATH}"
+        }
+        def status = bat(script: '@echo off && docker --version >nul 2>&1', returnStatus: true)
+        if (status != 0) {
+            error '''Docker is not available on this Jenkins agent.
+
+Fix:
+1. Start Docker Desktop and wait until it shows "Running"
+2. Add to System PATH (not just user PATH):
+   C:\\Program Files\\Docker\\Docker\\resources\\bin
+3. Restart the Jenkins Windows service after changing PATH
+4. Or set SKIP_DEPLOY=true to skip Docker/K8s stages'''
+        }
+        echo "Docker OK: ${shellOutput('docker --version')}"
+    }
+}
+
 def dockerLogin() {
     withCredentials([usernamePassword(credentialsId: 'docker-registry-credentials', usernameVariable: 'REG_USER', passwordVariable: 'REG_PASS')]) {
         if (isUnix()) {
